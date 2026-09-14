@@ -22,7 +22,8 @@
   let html = `<h3 style="margin-top:0;margin-bottom:12px;font-size:16px;text-align:center;color:#222;">Infinity Billing Calculator</h3><div style="max-height:280px;overflow-y:auto;margin-bottom:15px;">`;
 
   parts.forEach((p) => {
-    html += `<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:12px;cursor:pointer;"><span style="display:flex;align-items:center;"><input type="checkbox" class="inf_part" data-eval="${p.isEval ? "1" : "0"}" value="${p.customName || p.name}" style="margin-right:8px;transform:scale(1.1);">${p.name}</span><span style="color:#666;font-family:monospace;">${p.pn}</span></label>`;
+    const isChecked = p.isEval ? "checked" : "";
+    html += `<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:12px;cursor:pointer;"><span style="display:flex;align-items:center;"><input type="checkbox" class="inf_part" ${isChecked} data-eval="${p.isEval ? "1" : "0"}" value="${p.customName || p.name}" style="margin-right:8px;transform:scale(1.1);">${p.name}</span><span style="color:#666;font-family:monospace;">${p.pn}</span></label>`;
   });
 
   html += `</div><div style="display:flex;gap:8px;"><button id="inf_back" style="flex:1;padding:10px;background:#6c757d;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;">← Back</button><button id="inf_copy" style="flex:1.2;padding:10px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;">Apply</button><button id="inf_cancel" style="flex:1;padding:10px;background:#dc3545;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;">Cancel</button></div>`;
