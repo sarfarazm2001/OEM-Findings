@@ -1,41 +1,68 @@
 (function(){
   const bodyText = document.body ? (document.body.innerText || "") : "";
 
-  // 1. Company Map
+  // 1. Company Map (27 Companies)
   const companyMap = [
     { pattern: /New England Life Care|NELC/i, name: "NELC" },
-    { pattern: /Accredo/i, name: "Accredo" },
+    { pattern: /Adv(?:\.|anced)?\s*Infusion\s*Care/i, name: "Adv. Infusion Care" },
+    { pattern: /AHN|Allegheny\s*Health\s*Network/i, name: "AHN" },
+    { pattern: /Amerimed/i, name: "Amerimed" },
     { pattern: /Amerita/i, name: "Amerita" },
-    { pattern: /CVS/i, name: "CVS" },
-    { pattern: /Coram/i, name: "Coram" },
+    { pattern: /Accredo/i, name: "Accredo" },
+    { pattern: /Blackburn/i, name: "Blackburn" },
     { pattern: /Diplomat|Optum/i, name: "Optum" },
-    { pattern: /OmniCare/i, name: "OmniCare" },
-    { pattern: /Option\s*Care/i, name: "Option Care" }
+    { pattern: /Children'?s\s*Home\s*Care\s*Group/i, name: "Childrens Home Care Group" },
+    { pattern: /Coram/i, name: "Coram" },
+    { pattern: /CVS/i, name: "CVS" },
+    { pattern: /Eagleville/i, name: "Eagleville" },
+    { pattern: /EPPY'?S/i, name: "EPPY'S" },
+    { pattern: /Fairview\s*Home\s*Infusion/i, name: "Fairview Home Infusion" },
+    { pattern: /Hospice\s*Care\s*of\s*Southern\s*WV/i, name: "Hospice Care of Southern WV" },
+    { pattern: /Liberty\s*Medical\s*Specialties/i, name: "Liberty Medical Specialties" },
+    { pattern: /Lifetime/i, name: "Lifetime" },
+    { pattern: /Mercy\s*Health\s*Home\s*Infusion/i, name: "Mercy Health Home Infusion" },
+    { pattern: /Michigan\s*IV\s*Rx/i, name: "Michigan IV Rx" },
+    { pattern: /Omni\s*Care/i, name: "Omnicare" },
+    { pattern: /Option\s*Care/i, name: "Option Care" },
+    { pattern: /Reverence\s*Home\s*Health/i, name: "Reverence Home Health" },
+    { pattern: /Trinity\s*Infusion/i, name: "Trinity Infusion" },
+    { pattern: /Twel?veStone/i, name: "TwevleStone" },
+    { pattern: /UNC\s*Homecare\s*Specialists/i, name: "UNC Homecare Specialists" },
+    { pattern: /University\s*Hospitals/i, name: "University Hospitals" },
+    { pattern: /William\s*Bros/i, name: "William Bros" }
   ];
 
-  // 2. Device Map
+  // 2. Device Map (15 Devices - multi-word & specific patterns placed first)
   const deviceMap = [
+    { pattern: /Kangaroo\s*Omni|Omni/i, name: "Kangaroo Omni" },
+    { pattern: /Freedom\s*60/i, name: "Freedom 60" },
+    { pattern: /Freedom\s*Edge/i, name: "Freedom Edge" },
+    { pattern: /Freedom/i, name: "Freedom 60" },
+    { pattern: /Baxter\s*Fl(?:o|-)Gard|Fl(?:o|-)Gard/i, name: "Baxter Flo-Gard" },
+    { pattern: /Baxter\s*Syringe/i, name: "Baxter Syringe" },
+    { pattern: /Excelsior\s*Syringe/i, name: "Excelsior Syringe" },
+    { pattern: /Cronos?\s*S-?PID/i, name: "Cronos S-PID" },
+    { pattern: /Zyno\s*800F?/i, name: "Zyno 800F" },
+    { pattern: /Vista\s*Basic|Vista/i, name: "Vista Basic" },
     { pattern: /Infinity|Infinitys|EnteraLite/i, name: "Infinity" },
-    { pattern: /Omni|Omnis/i, name: "Omni" },
+    { pattern: /Curlin|Curlins/i, name: "Curlin" },
     { pattern: /Solis/i, name: "Solis" },
     { pattern: /Joey|Joeys/i, name: "Joey" },
-    { pattern: /Curlin|Curlins/i, name: "Curlin" },
-    { pattern: /Freedom|Freedoms/i, name: "Freedom" },
-    { pattern: /Vista|Vistas/i, name: "Vista" },
-    { pattern: /Legacy|Legacys/i, name: "Legacy" }
+    { pattern: /Sigma/i, name: "Sigma" },
+    { pattern: /Sapphire/i, name: "Sapphire" }
   ];
 
   // --- SERIAL NUMBER EXTRACTION ---
   let sn = "";
   const snMatch = bodyText.match(/Serial\s*(?:Number|#)?\s*[:#-]?\s*([A-Za-z0-9]+)/i);
 
-  if (snMatch && snMatch[1].length >= 5) {
+  if (snMatch && snMatch[1].length >= 4) {
     sn = snMatch[1].trim();
   } else {
     const patternMatch = 
-      bodyText.match(/\b(KS[A-Za-z0-9]{8,12})\b/i) ||  // 2. Omni
-      bodyText.match(/\b([FS]\d{7,9})\b/i)          ||  // 4. Joey, 6. Freedom
-      bodyText.match(/\b(\d{5,9})\b/);                  // 1. Infinity, 3. Solis, 5. Curlin, 7. Vista, 8. Legacy
+      bodyText.match(/\b(KS[A-Za-z0-9]{8,12})\b/i) ||  // Kangaroo Omni
+      bodyText.match(/\b([FS]\d{7,9})\b/i)          ||  // Joey, Freedom 60/Edge
+      bodyText.match(/\b(\d{5,9})\b/);                  // Infinity, Solis, Curlin, Vista, etc.
       
     sn = patternMatch ? patternMatch[1].trim() : "";
   }
@@ -58,13 +85,14 @@
     }
   }
 
+  // Sanitize Windows invalid filename characters: \ / : * ? " < > |
   const clean = str => (str || "").replace(/[\\/:*?"<>|]/g, "").trim();
 
   let finalCompany = clean(detectedCompany) || "Company";
   let finalDevice = clean(detectedDevice) || "Device";
   let finalSn = clean(sn);
 
-  // Fallback prompt only if serial number is completely missing
+  // Fallback prompt only if serial number is completely unreadable
   if (!finalSn) {
     finalSn = prompt("Serial Number not detected. Enter Serial #:", "");
     if (!finalSn) return;
@@ -72,7 +100,7 @@
 
   const fileName = `${finalCompany} ${finalDevice} SN${clean(finalSn)} Repair Authorization Report.pdf`;
 
-  // --- COPY TO CLIPBOARD ---
+  // --- CLIPBOARD ACTION ---
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(text);
