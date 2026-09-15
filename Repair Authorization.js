@@ -1,22 +1,5 @@
 (function(){
-  // Gather text from main body and all accessible iframes
-  function getAllText() {
-    let text = document.body ? (document.body.innerText || "") : "";
-    const iframes = document.querySelectorAll("iframe, frame");
-    iframes.forEach(f => {
-      try {
-        const doc = f.contentDocument || (f.contentWindow && f.contentWindow.document);
-        if (doc && doc.body) {
-          text += "\n" + doc.body.innerText;
-        }
-      } catch(e) {
-        // cross-origin iframe security block
-      }
-    });
-    return text;
-  }
-
-  const bodyText = getAllText();
+  const bodyText = document.body ? (document.body.innerText || "") : "";
 
   // 1. Company Map
   const companyMap = [
@@ -32,7 +15,7 @@
 
   // 2. Device Map
   const deviceMap = [
-    { pattern: /Infinity|Infinitys/i, name: "Infinity" },
+    { pattern: /Infinity|Infinitys|EnteraLite/i, name: "Infinity" },
     { pattern: /Omni|Omnis/i, name: "Omni" },
     { pattern: /Solis/i, name: "Solis" },
     { pattern: /Joey|Joeys/i, name: "Joey" },
@@ -42,17 +25,22 @@
     { pattern: /Legacy|Legacys/i, name: "Legacy" }
   ];
 
-  // Serial Number: check text, then common 9-digit Infinity / pump patterns
+  // --- SERIAL NUMBER EXTRACTION ---
   let sn = "";
   const snMatch = bodyText.match(/Serial\s*(?:Number|#)?\s*[:#-]?\s*([A-Za-z0-9]+)/i);
-  if (snMatch) {
+
+  if (snMatch && snMatch[1].length >= 5) {
     sn = snMatch[1].trim();
   } else {
-    const rawSnMatch = bodyText.match(/\b([569]\d{8})\b/) || bodyText.match(/\b([A-Z]\d{6,8})\b/i);
-    sn = rawSnMatch ? rawSnMatch[1].trim() : "UNKNOWN_SN";
+    const patternMatch = 
+      bodyText.match(/\b(KS[A-Za-z0-9]{8,12})\b/i) ||  // 2. Omni
+      bodyText.match(/\b([FS]\d{7,9})\b/i)          ||  // 4. Joey, 6. Freedom
+      bodyText.match(/\b(\d{5,9})\b/);                  // 1. Infinity, 3. Solis, 5. Curlin, 7. Vista, 8. Legacy
+      
+    sn = patternMatch ? patternMatch[1].trim() : "";
   }
 
-  // Device Detection
+  // --- DEVICE DETECTION ---
   let detectedDevice = "";
   for (const d of deviceMap) {
     if (d.pattern.test(bodyText)) {
@@ -60,12 +48,8 @@
       break;
     }
   }
-  if (!detectedDevice) {
-    const modelMatch = bodyText.match(/(?:Model|Device)\s*[:/]\s*([^\n\r]+)/i);
-    detectedDevice = modelMatch ? modelMatch[1].trim().split("/")[0].trim() : "Device";
-  }
 
-  // Company Detection
+  // --- COMPANY DETECTION ---
   let detectedCompany = "";
   for (const c of companyMap) {
     if (c.pattern.test(bodyText)) {
@@ -73,41 +57,22 @@
       break;
     }
   }
-  if (!detectedCompany) {
-    const ownerMatch = bodyText.match(/Owner\s*:\s*([^\n\r]+)/i);
-    if (ownerMatch) {
-      detectedCompany = ownerMatch[1].split(/[-–,]/)[0].trim();
-    } else {
-      detectedCompany = "Company";
-    }
-  }
 
-  // Sanitize Windows invalid filename characters
-  const clean = str => str.replace(/[\\/:*?"<>|]/g, "").trim();
+  const clean = str => (str || "").replace(/[\\/:*?"<>|]/g, "").trim();
 
-  // If text failed to parse (PDF viewer sandbox block), prompt user for quick input
-  let finalCompany = clean(detectedCompany);
-  let finalDevice = clean(detectedDevice);
+  let finalCompany = clean(detectedCompany) || "Company";
+  let finalDevice = clean(detectedDevice) || "Device";
   let finalSn = clean(sn);
 
-  if (finalSn === "UNKNOWN_SN" || finalCompany === "Company") {
-    // If the browser blocked PDF scraping, ask once with best-effort defaults
-    const manualSn = prompt("Serial Number not detected automatically. Enter Serial #:", finalSn === "UNKNOWN_SN" ? "" : finalSn);
-    if (manualSn) finalSn = clean(manualSn);
-
-    if (finalCompany === "Company") {
-      const manualCo = prompt("Enter Company Name (NELC, Coram, Option Care, etc.):", "NELC");
-      if (manualCo) finalCompany = clean(manualCo);
-    }
-    if (finalDevice === "Device") {
-      const manualDev = prompt("Enter Device Name (Infinity, Solis, Joey, etc.):", "Infinity");
-      if (manualDev) finalDevice = clean(manualDev);
-    }
+  // Fallback prompt only if serial number is completely missing
+  if (!finalSn) {
+    finalSn = prompt("Serial Number not detected. Enter Serial #:", "");
+    if (!finalSn) return;
   }
 
-  const fileName = `${finalCompany} ${finalDevice} SN${finalSn} Repair Authorization Report.pdf`;
+  const fileName = `${finalCompany} ${finalDevice} SN${clean(finalSn)} Repair Authorization Report.pdf`;
 
-  // Clipboard Execution
+  // --- COPY TO CLIPBOARD ---
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(text);
@@ -121,13 +86,9 @@
       ta.focus();
       ta.select();
       try {
-        const ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-        ok ? resolve() : reject();
-      } catch (e) {
-        document.body.removeChild(ta);
-        reject(e);
-      }
+        document.execCommand("copy") ? resolve() : reject();
+      } catch(e) { reject(e); }
+      document.body.removeChild(ta);
     });
   }
 
@@ -135,12 +96,12 @@
     const toast = document.createElement("div");
     toast.style.cssText = "position:fixed;bottom:24px;right:24px;background:#1a1d1f;color:#4ade80;border:1px solid #2d3238;padding:14px 20px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:9999999;font-family:sans-serif;font-size:13px;max-width:420px;line-height:1.5;";
     toast.innerHTML = `
-      <div style="font-weight:bold;color:#fff;margin-bottom:4px;">Copied to Clipboard!</div>
+      <div style="font-weight:bold;color:#fff;margin-bottom:4px;">Ready to Paste!</div>
       <div style="color:#cbd2d9;font-family:monospace;font-size:12px;word-break:break-all;">${fileName}</div>
       <div style="color:#9aa0a6;font-size:11px;margin-top:6px;">Press <b>Ctrl + V</b> in the Save dialog.</div>
     `;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+    setTimeout(() => toast.remove(), 3500);
   }).catch(() => {
     prompt("Copy filename manually (Ctrl+C):", fileName);
   });
