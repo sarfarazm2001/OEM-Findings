@@ -1,5 +1,22 @@
 (function(){
-  const bodyText = document.body.innerText || "";
+  // Gather text from main body and all accessible iframes
+  function getAllText() {
+    let text = document.body ? (document.body.innerText || "") : "";
+    const iframes = document.querySelectorAll("iframe, frame");
+    iframes.forEach(f => {
+      try {
+        const doc = f.contentDocument || (f.contentWindow && f.contentWindow.document);
+        if (doc && doc.body) {
+          text += "\n" + doc.body.innerText;
+        }
+      } catch(e) {
+        // cross-origin iframe security block
+      }
+    });
+    return text;
+  }
+
+  const bodyText = getAllText();
 
   // 1. Company Map
   const companyMap = [
@@ -25,11 +42,15 @@
     { pattern: /Legacy|Legacys/i, name: "Legacy" }
   ];
 
-  // --- EXTRACTION LOGIC ---
-
-  // Serial Number
+  // Serial Number: check text, then common 9-digit Infinity / pump patterns
+  let sn = "";
   const snMatch = bodyText.match(/Serial\s*(?:Number|#)?\s*[:#-]?\s*([A-Za-z0-9]+)/i);
-  const sn = snMatch ? snMatch[1].trim() : "UNKNOWN_SN";
+  if (snMatch) {
+    sn = snMatch[1].trim();
+  } else {
+    const rawSnMatch = bodyText.match(/\b([569]\d{8})\b/) || bodyText.match(/\b([A-Z]\d{6,8})\b/i);
+    sn = rawSnMatch ? rawSnMatch[1].trim() : "UNKNOWN_SN";
+  }
 
   // Device Detection
   let detectedDevice = "";
@@ -61,13 +82,32 @@
     }
   }
 
-  // Sanitize Windows invalid filename characters: \ / : * ? " < > |
+  // Sanitize Windows invalid filename characters
   const clean = str => str.replace(/[\\/:*?"<>|]/g, "").trim();
 
-  // Final Formatted Filename: [Company] [Device] SN[Serial] Repair Authorization Report.pdf
-  const fileName = `${clean(detectedCompany)} ${clean(detectedDevice)} SN${clean(sn)} Repair Authorization Report.pdf`;
+  // If text failed to parse (PDF viewer sandbox block), prompt user for quick input
+  let finalCompany = clean(detectedCompany);
+  let finalDevice = clean(detectedDevice);
+  let finalSn = clean(sn);
 
-  // --- CLIPBOARD ACTION ---
+  if (finalSn === "UNKNOWN_SN" || finalCompany === "Company") {
+    // If the browser blocked PDF scraping, ask once with best-effort defaults
+    const manualSn = prompt("Serial Number not detected automatically. Enter Serial #:", finalSn === "UNKNOWN_SN" ? "" : finalSn);
+    if (manualSn) finalSn = clean(manualSn);
+
+    if (finalCompany === "Company") {
+      const manualCo = prompt("Enter Company Name (NELC, Coram, Option Care, etc.):", "NELC");
+      if (manualCo) finalCompany = clean(manualCo);
+    }
+    if (finalDevice === "Device") {
+      const manualDev = prompt("Enter Device Name (Infinity, Solis, Joey, etc.):", "Infinity");
+      if (manualDev) finalDevice = clean(manualDev);
+    }
+  }
+
+  const fileName = `${finalCompany} ${finalDevice} SN${finalSn} Repair Authorization Report.pdf`;
+
+  // Clipboard Execution
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(text);
