@@ -1,0 +1,107 @@
+(function(){
+  const bodyText = document.body.innerText || "";
+
+  // 1. Company Map
+  const companyMap = [
+    { pattern: /New England Life Care|NELC/i, name: "NELC" },
+    { pattern: /Accredo/i, name: "Accredo" },
+    { pattern: /Amerita/i, name: "Amerita" },
+    { pattern: /CVS/i, name: "CVS" },
+    { pattern: /Coram/i, name: "Coram" },
+    { pattern: /Diplomat|Optum/i, name: "Optum" },
+    { pattern: /OmniCare/i, name: "OmniCare" },
+    { pattern: /Option\s*Care/i, name: "Option Care" }
+  ];
+
+  // 2. Device Map
+  const deviceMap = [
+    { pattern: /Infinity|Infinitys/i, name: "Infinity" },
+    { pattern: /Omni|Omnis/i, name: "Omni" },
+    { pattern: /Solis/i, name: "Solis" },
+    { pattern: /Joey|Joeys/i, name: "Joey" },
+    { pattern: /Curlin|Curlins/i, name: "Curlin" },
+    { pattern: /Freedom|Freedoms/i, name: "Freedom" },
+    { pattern: /Vista|Vistas/i, name: "Vista" },
+    { pattern: /Legacy|Legacys/i, name: "Legacy" }
+  ];
+
+  // --- EXTRACTION LOGIC ---
+
+  // Serial Number
+  const snMatch = bodyText.match(/Serial\s*(?:Number|#)?\s*[:#-]?\s*([A-Za-z0-9]+)/i);
+  const sn = snMatch ? snMatch[1].trim() : "UNKNOWN_SN";
+
+  // Device Detection
+  let detectedDevice = "";
+  for (const d of deviceMap) {
+    if (d.pattern.test(bodyText)) {
+      detectedDevice = d.name;
+      break;
+    }
+  }
+  if (!detectedDevice) {
+    const modelMatch = bodyText.match(/(?:Model|Device)\s*[:/]\s*([^\n\r]+)/i);
+    detectedDevice = modelMatch ? modelMatch[1].trim().split("/")[0].trim() : "Device";
+  }
+
+  // Company Detection
+  let detectedCompany = "";
+  for (const c of companyMap) {
+    if (c.pattern.test(bodyText)) {
+      detectedCompany = c.name;
+      break;
+    }
+  }
+  if (!detectedCompany) {
+    const ownerMatch = bodyText.match(/Owner\s*:\s*([^\n\r]+)/i);
+    if (ownerMatch) {
+      detectedCompany = ownerMatch[1].split(/[-–,]/)[0].trim();
+    } else {
+      detectedCompany = "Company";
+    }
+  }
+
+  // Sanitize Windows invalid filename characters: \ / : * ? " < > |
+  const clean = str => str.replace(/[\\/:*?"<>|]/g, "").trim();
+
+  // Final Formatted Filename: [Company] [Device] SN[Serial] Repair Authorization Report.pdf
+  const fileName = `${clean(detectedCompany)} ${clean(detectedDevice)} SN${clean(sn)} Repair Authorization Report.pdf`;
+
+  // --- CLIPBOARD ACTION ---
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise((resolve, reject) => {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        ok ? resolve() : reject();
+      } catch (e) {
+        document.body.removeChild(ta);
+        reject(e);
+      }
+    });
+  }
+
+  copyText(fileName).then(() => {
+    const toast = document.createElement("div");
+    toast.style.cssText = "position:fixed;bottom:24px;right:24px;background:#1a1d1f;color:#4ade80;border:1px solid #2d3238;padding:14px 20px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:9999999;font-family:sans-serif;font-size:13px;max-width:420px;line-height:1.5;";
+    toast.innerHTML = `
+      <div style="font-weight:bold;color:#fff;margin-bottom:4px;">Copied to Clipboard!</div>
+      <div style="color:#cbd2d9;font-family:monospace;font-size:12px;word-break:break-all;">${fileName}</div>
+      <div style="color:#9aa0a6;font-size:11px;margin-top:6px;">Press <b>Ctrl + V</b> in the Save dialog.</div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  }).catch(() => {
+    prompt("Copy filename manually (Ctrl+C):", fileName);
+  });
+})();
