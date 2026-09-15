@@ -8,7 +8,7 @@
     { name: "Infinity Bottom Housing", pn: "27696-001" },
     { name: "Infinity Motor (Orange)", pn: "28270-001" },
     { name: "Rotor Assembly", pn: "28483-001", customName: "Rotor Housing" },
-    { name: "Canon Motor", pn: "YB06-00300", customName: "Canon Motor YB06-00300" },
+    { name: "Canon Motor", pn: "42611", customName: "Canon Motor 42611" },
     { name: "Infinity II PCB Assembly", pn: "43763-101" },
     { name: "Top Housing", pn: "56717-001/80782-001" },
   ];
